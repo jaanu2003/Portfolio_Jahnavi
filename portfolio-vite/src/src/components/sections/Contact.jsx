@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaPaperPlane, FaLinkedin, FaGithub, FaEnvelope, FaPhone } from 'react-icons/fa';
-import emailjs from 'emailjs-com';
+import emailjs from '@emailjs/browser';
 import { GlowButton, GlowCard } from '../../styles/SharedStyles';
 
 const StyledContact = styled(motion.section)`
@@ -240,6 +240,25 @@ const SubmitButton = styled(GlowButton)`
   width: 100%;
 `;
 
+const FormMessage = styled(motion.div)`
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 8px;
+  text-align: center;
+  background: ${({ type, theme }) => 
+    type === 'success' 
+      ? `${theme.colors.success}20` 
+      : `${theme.colors.error}20`};
+  color: ${({ type, theme }) => 
+    type === 'success' 
+      ? theme.colors.success 
+      : theme.colors.error};
+  border: 1px solid ${({ type, theme }) => 
+    type === 'success' 
+      ? theme.colors.success 
+      : theme.colors.error};
+`;
+
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -263,20 +282,42 @@ const infoVariants = {
 
 const Contact = () => {
   const form = useRef();
+  const [status, setStatus] = useState({ type: '', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Initialize EmailJS with your public key
+    emailjs.init("4H4an2KuskvjuusZL");
+  }, []);
 
   const sendEmail = (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setStatus({ type: '', message: '' });
 
-    emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', form.current, 'YOUR_USER_ID')
+    // EmailJS configuration
+    const serviceId = 'service_txwmjcs';
+    const templateId = 'template_neptypi';
+
+    emailjs.sendForm(serviceId, templateId, form.current)
       .then((result) => {
-        console.log(result.text);
-        alert('Message Sent!');
-      }, (error) => {
-        console.log(error.text);
-        alert('An error occurred, please try again.');
+        console.log('Email sent successfully:', result.text);
+        setStatus({
+          type: 'success',
+          message: 'Message sent successfully! I will get back to you soon.'
+        });
+        form.current.reset();
+      })
+      .catch((error) => {
+        console.error('EmailJS error:', error);
+        setStatus({
+          type: 'error',
+          message: `Failed to send message: ${error.text || 'Please try again later.'}`
+        });
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-
-    e.target.reset();
   };
 
   return (
@@ -293,21 +334,68 @@ const Contact = () => {
         Get in Touch
       </SectionTitle>
       <ContactContainer>
-        <ContactForm ref={form} onSubmit={sendEmail} variants={formVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}>
+        <ContactForm 
+          ref={form} 
+          onSubmit={sendEmail} 
+          variants={formVariants} 
+          initial="hidden" 
+          whileInView="visible" 
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          {status.message && (
+            <FormMessage
+              type={status.type}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {status.message}
+            </FormMessage>
+          )}
           <FormGroup>
             <Label htmlFor="name">Your Name</Label>
-            <Input type="text" id="name" name="name" required placeholder="Your name" />
+            <Input 
+              type="text" 
+              id="name" 
+              name="name" 
+              required 
+              placeholder="Your name"
+              disabled={isSubmitting}
+            />
           </FormGroup>
           <FormGroup>
             <Label htmlFor="email">Email Address</Label>
-            <Input type="email" id="email" name="email" required placeholder="Your email" />
+            <Input 
+              type="email" 
+              id="email" 
+              name="email" 
+              required 
+              placeholder="Your email"
+              disabled={isSubmitting}
+            />
           </FormGroup>
           <FormGroup>
             <Label htmlFor="message">Your Message</Label>
-            <Input id="message" name="message" required placeholder="Your message" />
+            <Input 
+              as="textarea"
+              id="message" 
+              name="message" 
+              required 
+              placeholder="Your message"
+              rows="5"
+              disabled={isSubmitting}
+            />
           </FormGroup>
-          <SubmitButton type="submit" variants={formVariants}>
-            <FaPaperPlane /> Send Message
+          <SubmitButton 
+            type="submit" 
+            variants={formVariants}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Sending...' : (
+              <>
+                <FaPaperPlane /> Send Message
+              </>
+            )}
           </SubmitButton>
         </ContactForm>
         <InfoCardsContainer variants={infoVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}>
